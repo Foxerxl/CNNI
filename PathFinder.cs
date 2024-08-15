@@ -4,10 +4,11 @@ using UnityEngine;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
+using Unity.VisualScripting;
 
 public enum NodeState { Untested, Closed, Open}
 
-public class Node : MonoBehaviour
+public class Node
 {
     public Room room { get; set; }
     public Node parentNode = null;
@@ -73,8 +74,10 @@ public class PathFinder : MonoBehaviour
     List<Node> GetAvaiables(Node fromNode, List<Node> nodes)
     {
         List<Node> walkableNodes = new List<Node>();
+        bool skip = false;
         foreach (Node node in nodes)
         {
+            if (skip || (node.room.People >= node.room.MaxPeople) ) continue;
             if (node.State == NodeState.Open)
             {
                 float traversalCost = Vector2.Distance(node.room.location,node.parentNode.room.location);
@@ -91,6 +94,12 @@ public class PathFinder : MonoBehaviour
                 node.parentNode = fromNode;
                 node.State = NodeState.Open;
                 walkableNodes.Add(node);
+                Debug.DrawLine(fromNode.room.transform.position, node.room.transform.position, Color.yellow, 10, false);
+            }else if (node.room == FRoom)
+            {
+                skip = true;
+                walkableNodes = new List<Node>();
+                walkableNodes.Add(node);
             }
         }
         return walkableNodes;
@@ -99,7 +108,8 @@ public class PathFinder : MonoBehaviour
     {
         IsReady = false;
         if (Rooms.Count <= 0) { Debug.LogWarning("No rooms to set up"); return; }
-        if (AllNodes.Count > 0) { AllNodes.Clear(); }
+        //if (AllNodes.Count > 0) { AllNodes.Clear(); }
+        AllNodes.Clear();
         foreach (Room room in Rooms)
         {
             Node node = new Node();
@@ -132,6 +142,9 @@ public class PathFinder : MonoBehaviour
         }
         SRoom = Start; FRoom = End;
         Snode = GetNodeFromRoom(Start); Fnode = GetNodeFromRoom(End);
+        //object[] De = {SRoom.name,FRoom.name,Snode.room.name,Fnode.room.name};
+        Debug.Log(Snode.room.name);
+        Debug.Log(Fnode.room.name);
         IsReady = true;
     }
 
@@ -154,7 +167,7 @@ public class PathFinder : MonoBehaviour
             {
                 if (Search(nextNode))
                 { // Note: Recurses back into Search(Node)
-                    Debug.DrawLine(currentNode.room.transform.position, nextNode.room.transform.position, Color.green, 10, false);
+                    //Debug.DrawLine(currentNode.room.transform.position, nextNode.room.transform.position, Color.green, 10, false);
                     return true;
                 }
                 else
@@ -166,16 +179,19 @@ public class PathFinder : MonoBehaviour
         }
         return false;
     }
-    List<Room> FindPath()
+    public List<Room> FindPath()
     {
         List<Room> path = new List<Room>();
         if (Snode == null || Fnode == null) { Debug.LogWarning("Start and Finish node not found!"); return path; }
-        if (Search(Snode))
+        bool wasFound = Search(Snode);
+        //Debug.Log(wasFound);
+        if (wasFound)
         {
             Node node = Fnode;
             while (node.parentNode != null)
             {
                 path.Add(node.room);
+                Debug.DrawLine(node.room.transform.position, node.parentNode.room.transform.position, Color.green, 10, false);
                 node = node.parentNode;
             }
             path.Reverse();
